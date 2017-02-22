@@ -1,21 +1,10 @@
-assignments = []
-
-def assign_value(values, box, value):
-    """
-    Please use this function to update your values dictionary!
-    Assigns a value to a given box. If it updates the board record it.
-    """
-    values[box] = value
-    if len(value) == 1:
-        assignments.append(values.copy())
-    return values
-
-rows = 'ABCDEFGHI'
-cols = '123456789'
-
+#initialization
 def cross(a, b):
     return [s+t for s in a for t in b]
 
+assignments = []
+rows = 'ABCDEFGHI'
+cols = '123456789'
 boxes = cross(rows, cols)
 
 row_units = [cross(r, cols) for r in rows]
@@ -26,6 +15,17 @@ diaganol_units = [[s+t for s,t in  zip(rows,cols)],[s+t for s,t in zip(rows,cols
 unitlist = row_units + column_units + square_units + diaganol_units
 units = dict((s, [u for u in unitlist if s in u]) for s in boxes)
 peers = dict((s, set(sum(units[s],[]))-set([s])) for s in boxes)
+
+
+def assign_value(values, box, value):
+    """
+    Please use this function to update your values dictionary!
+    Assigns a value to a given box. If it updates the board record it.
+    """
+    values[box] = value
+    if len(value) == 1:
+        assignments.append(values.copy())
+    return values
 
 def display(values):
     """
@@ -101,6 +101,7 @@ def reduce_puzzle(values):
     while not stalled:
         # Check how many boxes have a determined value
         solved_values_before = len([box for box in values.keys() if len(values[box]) == 1])
+        values = naked_twins(values)
         # Use the Eliminate Strategy
         values = eliminate(values)
         # Use the Only Choice Strategy
@@ -120,14 +121,18 @@ def search(values):
     remain_puzzle = reduce_puzzle(values)
     # Choose one of the unfilled squares with the fewest possibilities
     if remain_puzzle is False:
+        #Current puzzle is unsolvable
         return False
     if all(len(remain_puzzle[s]) == 1 for s in boxes):
+        #Current puzzle is solved
         return remain_puzzle
     min_key = None
+    #Find the unit with least possible numbers
     for key,val in remain_puzzle.items():
         if (len(val) != 1):
             if (min_key == None) or (len(val) < len(remain_puzzle[min_key])):
                 min_key = key
+    #Try the one of the possibility with the unit found previously
     for char in remain_puzzle[min_key]:
         new_puzzle = remain_puzzle.copy()
         new_puzzle[min_key] = char
@@ -136,6 +141,17 @@ def search(values):
             return solution
 
 def make_pair(a,b):
+    """
+    Helper function for naked_twins
+    Create ordered pair of units
+    Input:
+        a: Unit 
+        b: Unit
+    Output:
+        Ordered pair(tuple)
+    Example:
+        make_pair("A1","D1") == makepair("D1","A1") == ("A1","D1")
+    """
     if  a>b:
         return (a,b)
     else:
@@ -145,10 +161,12 @@ def naked_twins(values):
     unsolved = [box for box in boxes if len(values[box]) != 1]
 
     pairs = set([])
+    #Find twins
     for box in [b for b in unsolved if len(values[b]) == 2]:
         for peer in [p for p in peers[box] if values[p] == values[box]]:
             pairs.add(make_pair(box,peer))
 
+    #Eliminate twins
     for a,b in pairs:
         for unit in [u for u in units[a] if b in u]:
             for box in [bx for bx in unit if len(values[bx]) > 1 and bx != a and bx != b]:
